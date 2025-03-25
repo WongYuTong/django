@@ -18,7 +18,7 @@ def open_url(driver, url):
     except TimeoutException:
         logging.error("打開URL時超時，請檢查網絡連接或URL是否正確。")
 
-def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=3, batch_size=50, max_scrolls=10000, store_id=None):
+def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, batch_size=50, max_scrolls=10000, store_id=None):
     """持續滾動評論區直到沒有新評論"""
     try:
         # 如果沒有提供 store_id，則無法追蹤評論數量
@@ -34,10 +34,10 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=3, b
                 next(reader)  # 跳過標題行
                 review_count = sum(1 for row in reader if row and row[0] == str(store_id))
         
-        if review_count >= 5000:
-            logging.info(f"店家 {store_name}（編號：{store_id}）已達到5000則評論上限，跳過抓取")
+        if review_count >= 3000:
+            logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限，跳過抓取")
             # 更新完成狀態
-            update_completion_status(store_id, "已完成", f"已達到5000則評論上限")
+            update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
             return
 
         scrollable_div = WebDriverWait(driver, 60).until(
@@ -61,11 +61,11 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=3, b
             new_reviews = [review for review in reviews if review not in processed_reviews]
             if new_reviews:
                 # 計算剩餘可抓取的評論數量
-                remaining_reviews = 5000 - review_count
+                remaining_reviews = 3000 - review_count
                 if remaining_reviews <= 0:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到5000則評論上限")
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到5000則評論上限")
+                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
                     break
                 
                 # 確保不超過限制
@@ -74,10 +74,10 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=3, b
                 processed_reviews.update(new_reviews[:reviews_to_process])
                 review_count += reviews_to_process
                 
-                if review_count >= 5000:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到5000則評論上限")
+                if review_count >= 3000:
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到5000則評論上限")
+                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
                     break
             
             if new_height == last_height:
@@ -113,7 +113,7 @@ def sort_reviews_by_latest(driver):
     except Exception as e:
         logging.error(f"選擇最新排序時錯：{e}")
 
-def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scrolls=1, pause_time=3):
+def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scrolls=10, pause_time=3):
     """使用關鍵字滾動獲取所有店家的鏈接，並儲存店家資訊"""
     store_links = set()  # 使用集合避免重複
     try:
@@ -130,10 +130,11 @@ def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scro
                 return new Promise((resolve, reject) => {
                     var totalHeight = 0;
                     var distance = 1000;
-                    var scrollDelay = 3000;
+                    var scrollDelay = 10000;
                     
                     var timer = setInterval(() => {
                         var scrollHeightBefore = scrollableDiv.scrollHeight;
+                        var elementsBefore = scrollableDiv.querySelectorAll('div[jsaction]').length;
                         scrollableDiv.scrollBy(0, distance);
                         totalHeight += distance;
 
@@ -141,7 +142,8 @@ def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scro
                             totalHeight = 0;
                             setTimeout(() => {
                                 var scrollHeightAfter = scrollableDiv.scrollHeight;
-                                if (scrollHeightAfter > scrollHeightBefore) {
+                                var elementsAfter = scrollableDiv.querySelectorAll('div[jsaction]').length;
+                                if (scrollHeightAfter > scrollHeightBefore || elementsAfter > elementsBefore) {
                                     return;
                                 } else {
                                     clearInterval(timer);
@@ -160,8 +162,21 @@ def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scro
 
         for item in items:
             try:
-                link = item.find_element(By.CSS_SELECTOR, 'a').get_attribute('href')
-                store_links.add(link)
+                # 等待元素可點擊，最多等待2秒
+                WebDriverWait(item, 2).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'a'))
+                )
+                # 嘗試更精確的選擇器
+                link_element = item.find_element(By.CSS_SELECTOR, 'a[href*="maps/place"]')
+                if not link_element:
+                    link_element = item.find_element(By.CSS_SELECTOR, 'a')
+                
+                link = link_element.get_attribute('href')
+                if link:
+                    store_links.add(link)
+                    logging.info(f"成功獲取店家連結: {link[:60]}...")
+                else:
+                    logging.warning("找到連結元素但無法獲取href屬性")
                 
                 # # 獲取店名與評價
                 # store_name = item.find_element(By.CSS_SELECTOR, 'div.qBF1Pd').text
@@ -171,8 +186,12 @@ def fetch_store_links(driver, keyword, latitude, longitude, zoom_level, max_scro
                 #     rating = "無星數"
                     
                 # save_store_info(store_name, rating, latitude, longitude,keyword)  # 存入 CSV
+            except TimeoutException:
+                logging.warning(f"等待連結元素超時，可能不是有效店家項目")
+            except NoSuchElementException as e:
+                logging.warning(f"找不到連結元素: {str(e).split('Stacktrace')[0]}")
             except Exception as e:
-                logging.error(f"獲取店家鏈接時出錯：{e}")
+                logging.error(f"獲取店家鏈接時出錯：{str(e).split('Stacktrace')[0]}")
 
     except Exception as e:
         logging.error(f"獲取店家鏈接時出錯：{e}")
@@ -193,12 +212,12 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
     """抓取評論並保存到單獨的 CSV 文件和總評論檔案"""
     try:
         # 創建評論資料夾（如果不存在）
-        reviews_dir = "店家評論"
-        if not os.path.exists(reviews_dir):
-            os.makedirs(reviews_dir)
+        # reviews_dir = "店家評論"
+        # if not os.path.exists(reviews_dir):
+        #     os.makedirs(reviews_dir)
             
         # 個別店家的評論檔案路徑
-        csv_file_path = os.path.join(reviews_dir, f'{sanitize_filename(store_name)}_reviews.csv')
+        # csv_file_path = os.path.join(reviews_dir, f'{sanitize_filename(store_name)}_reviews.csv')
         # 總評論檔案路徑
         all_reviews_file = "all_reviews.csv"
         
@@ -230,16 +249,26 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
         new_reviews_count = 0
         for review in reviews:
             try:
+                # 先檢查評論是否有全文按鈕
                 try:
-                    full_text_button = WebDriverWait(review, 1).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]'))
-                    )
-                    full_text_button.click()
-                    time.sleep(0.3)
-                except (NoSuchElementException, TimeoutException):
-                    logging.info("沒有找到 '全文' 按鈕，跳過...")
-                    pass
+                    # 使用更精確的選擇器來找到全文按鈕
+                    full_text_button = None
+                    full_text_buttons = review.find_elements(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
+                    if full_text_buttons:
+                        full_text_button = full_text_buttons[0]
+                        
+                    # 如果找到按鈕，則點擊展開
+                    if full_text_button and full_text_button.is_displayed():
+                        logging.info("找到全文按鈕，點擊展開...")
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", full_text_button)
+                        time.sleep(0.5)  # 等待滾動完成
+                        full_text_button.click()
+                except (NoSuchElementException, TimeoutException) as e:
+                    logging.info(f"展開全文過程中出現異常: {str(e).split('Stacktrace')[0]}")
+                except Exception as e:
+                    logging.info(f"處理全文按鈕時出錯: {str(e).split('Stacktrace')[0]}")
 
+                # 獲取用戶信息
                 user_name = review.find_element(By.CLASS_NAME, 'd4r55').text
                 rating_text = review.find_element(By.CLASS_NAME, 'kvMYJc').get_attribute("aria-label")
                 rating = ''.join(filter(str.isdigit, rating_text))
@@ -255,12 +284,20 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                 
                 if not is_duplicate:
                     try:
-                        review_text_element = review.find_element(By.CLASS_NAME, 'MyEned')
-                        review_text = review_text_element.text.replace('\n', ' ').strip()
-                        logging.info(f"{user_name} 評論文字：{review_text}")
-                    except NoSuchElementException:
-                        review_text = "無評論"
-                        logging.info("評論無文字，標記為無評論")
+                        # 首先嘗試獲取常規文字評論
+                        try:
+                            review_text_element = review.find_element(By.CLASS_NAME, 'MyEned')
+                            review_text = review_text_element.text.replace('\n', ' ').strip()
+                            logging.info(f"{user_name} 評論文字：{review_text}")
+                        except NoSuchElementException:
+                            # 如果找不到常規評論，嘗試查找結構化評論 (jslog="127691")
+                            structured_review = review.find_elements(By.CSS_SELECTOR, 'div[jslog="127691"]')
+                            if structured_review:
+                                review_text = structured_review[0].text.replace('\n', ' ').strip()
+                                logging.info(f"{user_name} 結構化評論：{review_text}")
+                            else:
+                                review_text = "無評論"
+                                logging.info("找不到文字評論和結構化評論，標記為無評論")
                     except Exception as e:
                         logging.error(f"處理評論文本時出錯：{e}")
                         review_text = "無評論"
@@ -278,7 +315,7 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                         writer = csv.writer(file)
                         writer.writerow([store_id, user_name, rating, review_date, review_text, current_date])
                     
-                    # 將新評論添加到現有評論列表中
+                    # 將新評論添加到現有評論列表中（需要三個欄位都相同才判定為重複）
                     existing_reviews.append({
                         'store_id': str(store_id),
                         'user_name': user_name,
@@ -289,7 +326,7 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                     logging.info(f"抓取評論: 用戶: {user_name}, 評分: {rating}, 日期: {review_date}, 評論: {review_text}")
                     logging.info('-' * 30)
                 else:
-                    logging.info(f"評論已存在，跳過: 店家編號 {store_id}, 用戶 {user_name}, 日期 {review_date}")
+                    logging.info(f"評論已存在（店家編號 {store_id}、用戶 {user_name}、日期 {review_date} 都相同），跳過")
             except Exception as e:
                 logging.error(f"無法解析評論的部分內容：{e}")
 
@@ -362,7 +399,7 @@ def fetch_intro_info(driver, store_name, keyword):
             logging.info("未找到店家圖片")
 
         try:
-            status_element = driver.find_element(By.CSS_SELECTOR, 'span.aSftqf')
+            status_element = driver.find_element(By.CSS_SELECTOR, 'span.fCEvvc span[jslog="75719; mutable:true;"]')
             if status_element and status_element.text:
                 business_status = status_element.text
                 logging.info(f"找到營業狀態：{business_status}")

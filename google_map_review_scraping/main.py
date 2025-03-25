@@ -2,20 +2,21 @@ import sys
 import logging
 from utils import initialize_driver
 from scraper import open_url, click_update_results_checkbox, fetch_store_links, fetch_intro_info
-
+import time
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
-    url = f"https://www.google.com/maps/search/咖啡廳/"
+    keywords = "已停業"
+    url = f"https://www.google.com/maps/search/{keywords}"
     driver = initialize_driver()
     try:
         open_url(driver, url)
-        click_update_results_checkbox(driver)
-        keywords = "咖啡廳"
-        store_links = fetch_store_links(driver, keywords, 24.8496199, 121.0237044, 11)
+        click_update_results_checkbox(driver)        
+        store_links = fetch_store_links(driver, keywords, 25.09108, 121.5598, 12)
+        time.sleep(2)
         for store_link in store_links:
             driver.get(store_link)        
             store_name = driver.title.split(' - ')[0]  # 假設店名在標題中
