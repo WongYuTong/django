@@ -34,10 +34,10 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, b
                 next(reader)  # 跳過標題行
                 review_count = sum(1 for row in reader if row and row[0] == str(store_id))
         
-        if review_count >= 500:
-            logging.info(f"店家 {store_name}（編號：{store_id}）已達到500則評論上限，跳過抓取")
+        if review_count >= 3000:
+            logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限，跳過抓取")
             # 更新完成狀態
-            update_completion_status(store_id, "已完成", f"已達到500則評論上限")
+            update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
             return
 
         scrollable_div = WebDriverWait(driver, 60).until(
@@ -61,11 +61,11 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, b
             new_reviews = [review for review in reviews if review not in processed_reviews]
             if new_reviews:
                 # 計算剩餘可抓取的評論數量
-                remaining_reviews = 500 - review_count
+                remaining_reviews = 3000 - review_count
                 if remaining_reviews <= 0:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到500則評論上限")
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到500則評論上限")
+                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
                     break
                 
                 # 確保不超過限制
@@ -74,10 +74,10 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, b
                 processed_reviews.update(new_reviews[:reviews_to_process])
                 review_count += reviews_to_process
                 
-                if review_count >= 500:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到500則評論上限")
+                if review_count >= 3000:
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到500則評論上限")
+                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
                     break
             
             if new_height == last_height:
@@ -251,43 +251,20 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
             try:
                 # 先檢查評論是否有全文按鈕
                 try:
-                    # 先找到评论内容区域
-                    review_content = review.find_element(By.CLASS_NAME, 'MyEned')
-                    # 在评论内容区域中查找全文按钮
-                    full_text_button = review_content.find_element(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
-                    
+                    # 使用更精確的選擇器來找到全文按鈕
+                    full_text_button = None
+                    full_text_buttons = review.find_elements(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
+                    if full_text_buttons:
+                        full_text_button = full_text_buttons[0]
+                        
                     # 如果找到按鈕，則點擊展開
                     if full_text_button and full_text_button.is_displayed():
                         logging.info("找到全文按鈕，點擊展開...")
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", full_text_button)
                         time.sleep(0.5)  # 等待滾動完成
-                        if len(reviews) >= 600:
-                            time.sleep(1)
                         full_text_button.click()
-                        time.sleep(0.5)
-                        # 检查是否需要重试点击，最多重试5次
-                        retry_count = 0
-                        max_retries = 5
-                        while retry_count < max_retries:
-                            time.sleep(0.5)
-                            try:
-                                retry_button = review_content.find_element(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
-                                if retry_button.is_displayed():
-                                    logging.info(f"檢測到全文按鈕仍然存在，第 {retry_count + 1} 次嘗試點擊...")
-                                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", retry_button)
-                                    time.sleep(0.5)
-                                    retry_button.click()
-                                    time.sleep(1)
-                                    retry_count += 1
-                                else:
-                                    break  # 按钮不可见，说明已展开成功
-                            except NoSuchElementException:
-                                break  # 找不到按钮，说明已展开成功
-                        
-                        if retry_count >= max_retries:
-                            logging.info("已達到最大重試次數，停止嘗試點擊全文按鈕")
-                except NoSuchElementException:
-                    logging.info("未找到全文按鈕或評論內容區域")
+                except (NoSuchElementException, TimeoutException) as e:
+                    logging.info(f"展開全文過程中出現異常: {str(e).split('Stacktrace')[0]}")
                 except Exception as e:
                     logging.info(f"處理全文按鈕時出錯: {str(e).split('Stacktrace')[0]}")
 
@@ -364,7 +341,7 @@ def fetch_intro_info(driver, store_name, keyword):
         if not os.path.exists(csv_file):
             with open(csv_file, mode='w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow(["編號", "店名", "地址", "經緯度", "營業時間", "官方網站", "店家簡述", "簡介", "搜尋關鍵字", "星數", "價位", "圖片檔案名稱", "是否已完成"])
+                writer.writerow(["編號", "店名", "地址", "經緯度", "營業時間", "官方網站", "店家簡述", "簡介", "搜尋關鍵字", "星數", "價位", "營業狀態", "圖片檔案名稱", "是否已完成"])
 
         store_brief = "無簡述"
         intro_text = []
@@ -374,7 +351,7 @@ def fetch_intro_info(driver, store_name, keyword):
         website = "無官方網站"
         rating = "無星數"
         price_level = "無價位資訊"
-        # business_status = ""  # 暫時停用營業狀態
+        business_status = ""
         image_filename = ""
         is_completed = "未完成"  # 預設為未完成
 
@@ -421,13 +398,13 @@ def fetch_intro_info(driver, store_name, keyword):
         except NoSuchElementException:
             logging.info("未找到店家圖片")
 
-        # try:
-        #     status_element = driver.find_element(By.CSS_SELECTOR, 'div.lMbq3e span.fCEvvc span[jslog="75719; mutable:true;"]')
-        #     if status_element and status_element.text:
-        #         business_status = status_element.text
-        #         logging.info(f"找到營業狀態：{business_status}")
-        # except NoSuchElementException:
-        #     logging.info("未找到營業狀態")
+        try:
+            status_element = driver.find_element(By.CSS_SELECTOR, 'span.fCEvvc span[jslog="75719; mutable:true;"]')
+            if status_element and status_element.text:
+                business_status = status_element.text
+                logging.info(f"找到營業狀態：{business_status}")
+        except NoSuchElementException:
+            logging.info("未找到營業狀態")
 
         try:
             rating_element = driver.find_element(By.CSS_SELECTOR, 'div.F7nice span[aria-hidden="true"]')
@@ -543,7 +520,7 @@ def fetch_intro_info(driver, store_name, keyword):
             logging.info(f"{store_name} 找不到簡介按鈕，跳過...")
             with open(csv_file, mode='a', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow([next_id, store_name, address, coordinates, business_hours, website, "無簡述", "無詳細簡介", keyword, rating, price_level, image_filename, is_completed])
+                writer.writerow([next_id, store_name, address, coordinates, business_hours, website, "無簡述", "無詳細簡介", keyword, rating, price_level, business_status, image_filename, is_completed])
             return
 
         try:
@@ -577,7 +554,7 @@ def fetch_intro_info(driver, store_name, keyword):
         
         with open(csv_file, mode='a', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file)
-            writer.writerow([next_id, store_name, address, coordinates, business_hours, website, store_brief, formatted_intro, keyword, rating, price_level, image_filename, is_completed])
+            writer.writerow([next_id, store_name, address, coordinates, business_hours, website, store_brief, formatted_intro, keyword, rating, price_level, business_status, image_filename, is_completed])
             logging.info(f"已保存 {store_name} 的所有信息，編號：{next_id}")
         time.sleep(1)
 
