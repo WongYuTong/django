@@ -9,7 +9,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
-    keywords = "已停業"
+    keywords = "火鍋"
     url = f"https://www.google.com/maps/search/{keywords}"
     driver = initialize_driver()
     try:
