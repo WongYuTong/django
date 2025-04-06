@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}註冊 - 美食推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2><i class="fas fa-user-plus me-2"></i>註冊</h2>
+                        <p class="text-muted">創建您的帳號來開始使用美食推薦小幫手</p>
+                    </div>
+                    
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">用戶名</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    {{ form.username }}
+                                </div>
+                                {% if form.username.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.username.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">電子郵件</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    {{ form.email }}
+                                </div>
+                                {% if form.email.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.email.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label">密碼</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    {{ form.password1 }}
+                                </div>
+                                {% if form.password1.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.password1.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text small text-muted">
+                                    <ul>
+                                        <li>密碼不能與其他個人信息太相似</li>
+                                        <li>密碼必須至少包含8個字符</li>
+                                        <li>密碼不能是常用密碼</li>
+                                        <li>密碼不能全是數字</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label">確認密碼</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    {{ form.password2 }}
+                                </div>
+                                {% if form.password2.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.password2.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text small text-muted">再次輸入相同的密碼以進行確認</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mb-3">
+                            <button type="submit" class="btn btn-primary">註冊</button>
+                        </div>
+                        <div class="text-center">
+                            <p>已有帳號？ <a href="{% url 'login' %}">立即登入</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 為表單輸入添加Bootstrap樣式
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('{{ form.username.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ form.username.id_for_label }}').setAttribute('placeholder', '選擇一個用戶名');
+        
+        document.getElementById('{{ form.email.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ form.email.id_for_label }}').setAttribute('placeholder', '輸入您的電子郵件');
+        
+        document.getElementById('{{ form.password1.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ form.password1.id_for_label }}').setAttribute('placeholder', '創建一個密碼');
+        
+        document.getElementById('{{ form.password2.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ form.password2.id_for_label }}').setAttribute('placeholder', '再次輸入您的密碼');
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}探索美食 - 美食推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-compass me-2"></i>探索美食</h2>
+    </div>
+
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜尋美食或用戶..." id="searchInput">
+                                <button class="btn btn-primary" type="button">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
+                                    <i class="fas fa-filter"></i> 篩選
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-md-end mt-3 mt-md-0">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="allPostsBtn">全部</button>
+                                <button type="button" class="btn btn-outline-primary" id="followingBtn">追蹤中</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="collapse mt-3" id="filterCollapse">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cuisine" class="form-label">料理類型</label>
+                                <select class="form-select" id="cuisine">
+                                    <option selected value="">所有類型</option>
+                                    <option value="chinese">中式料理</option>
+                                    <option value="taiwanese">台式料理</option>
+                                    <option value="japanese">日式料理</option>
+                                    <option value="korean">韓式料理</option>
+                                    <option value="western">西式料理</option>
+                                    <option value="italian">義式料理</option>
+                                    <option value="thai">泰式料理</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="mealType" class="form-label">餐點類型</label>
+                                <select class="form-select" id="mealType">
+                                    <option selected value="">所有餐點</option>
+                                    <option value="breakfast">早餐</option>
+                                    <option value="lunch">午餐</option>
+                                    <option value="dinner">晚餐</option>
+                                    <option value="dessert">甜點</option>
+                                    <option value="snack">點心</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="priceRange" class="form-label">價格範圍</label>
+                                <select class="form-select" id="priceRange">
+                                    <option selected value="">所有價格</option>
+                                    <option value="cheap">經濟實惠 ($)</option>
+                                    <option value="moderate">中等價位 ($$)</option>
+                                    <option value="expensive">高檔價位 ($$$)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary me-2" id="applyFilterBtn">套用篩選</button>
+                            <button type="button" class="btn btn-outline-secondary" id="resetFilterBtn">重置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 推薦列表 -->
+        <div class="col-12">
+            <div class="row" id="postsContainer">
+                {% if recommendations %}
+                    {% for recommendation in recommendations %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card food-card h-100">
+                                {% if recommendation.image %}
+                                    <img src="{{ recommendation.image.url }}" class="card-img-top" alt="{{ recommendation.food_name }}">
+                                {% else %}
+                                    <img src="/static/images/default_food.jpg" class="card-img-top" alt="默認美食圖片">
+                                {% endif %}
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">{{ recommendation.food_name }}</h5>
+                                        <button class="btn btn-sm btn-link favorite-btn" data-post-id="{{ recommendation.id }}">
+                                            <i class="far fa-heart"></i>
+                                        </button>
+                                    </div>
+                                    <p class="card-text">{{ recommendation.description|truncatewords:15 }}</p>
+                                    <div class="d-flex align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ recommendation.user.profile.profile_pic.url }}" alt="{{ recommendation.user.username }}" class="avatar me-2">
+                                            <div>
+                                                <span class="d-block">{{ recommendation.user.username }}</span>
+                                                <button class="btn btn-sm btn-link text-muted p-0 follow-btn" data-user-id="{{ recommendation.user.id }}">
+                                                    <small>追蹤</small>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted ms-auto">{{ recommendation.created_at|date:"Y-m-d" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
+                                <h4>目前沒有美食推薦</h4>
+                                <p class="text-muted">試著與美食推薦小幫手聊天獲取推薦，或是探索其他用戶的貼文</p>
+                                <div class="mt-3">
+                                    <a href="{% url 'chat_room' %}" class="btn btn-primary me-2">開始聊天</a>
+                                    <a href="{% url 'create_post' %}" class="btn btn-outline-primary">建立貼文</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 收藏按鈕點擊事件
+        $('.favorite-btn').click(function() {
+            const postId = $(this).data('post-id');
+            const btn = $(this);
+            
+            $.ajax({
+                url: `/user/post/${postId}/favorite/`,
+                type: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                success: function(response) {
+                    if (response.is_favorite) {
+                        btn.find('i').removeClass('far').addClass('fas text-danger');
+                    } else {
+                        btn.find('i').removeClass('fas text-danger').addClass('far');
+                    }
+                    
+                    // 顯示提示訊息
+                    showToast(response.message);
+                }
+            });
+        });
+        
+        // 追蹤按鈕點擊事件
+        $('.follow-btn').click(function() {
+            const userId = $(this).data('user-id');
+            const btn = $(this);
+            
+            $.ajax({
+                url: `/user/user/${userId}/follow/`,
+                type: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                success: function(response) {
+                    if (response.is_following) {
+                        btn.find('small').text('已追蹤');
+                        btn.addClass('text-primary');
+                    } else {
+                        btn.find('small').text('追蹤');
+                        btn.removeClass('text-primary');
+                    }
+                    
+                    // 顯示提示訊息
+                    showToast(response.message);
+                }
+            });
+        });
+        
+        // 套用篩選
+        $('#applyFilterBtn').click(function() {
+            applyFilters();
+        });
+        
+        // 重置篩選
+        $('#resetFilterBtn').click(function() {
+            $('#cuisine').val('');
+            $('#mealType').val('');
+            $('#priceRange').val('');
+            applyFilters();
+        });
+        
+        // 僅顯示追蹤中
+        $('#followingBtn').click(function() {
+            $(this).addClass('active');
+            $('#allPostsBtn').removeClass('active');
+            // 這裡添加只顯示追蹤用戶的貼文邏輯
+        });
+        
+        // 顯示全部
+        $('#allPostsBtn').click(function() {
+            $(this).addClass('active');
+            $('#followingBtn').removeClass('active');
+            // 這裡添加顯示所有貼文的邏輯
+        });
+        
+        // 搜尋功能
+        $('#searchInput').on('keyup', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+        
+        function applyFilters() {
+            // 這裡會添加篩選和搜尋的實際邏輯
+            console.log('Applying filters');
+            console.log('Search term:', $('#searchInput').val());
+            console.log('Cuisine:', $('#cuisine').val());
+            console.log('Meal type:', $('#mealType').val());
+            console.log('Price range:', $('#priceRange').val());
+            
+            // 實際應用中應該使用AJAX來獲取過濾後的結果
+        }
+        
+        // 顯示通知提示
+        function showToast(message) {
+            // 這裡添加顯示提示消息的邏輯
+            alert(message); // 簡單的替代方案
+        }
+        
+        // 獲取CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}首頁 - 美食推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="text-center mb-5">
+                <h1 class="display-4 mb-3">歡迎使用美食推薦小幫手</h1>
+                <p class="lead">您的個人化美食顧問，為您推薦最適合的美食選擇</p>
+            </div>
+            
+            <div class="row row-cols-1 row-cols-md-3 g-4 mb-5">
+                <div class="col">
+                    <div class="colored-box blue h-100">
+                        <div class="icon-circle">
+                            <i class="fas fa-comment-dots"></i>
+                        </div>
+                        <h3>聊天助手</h3>
+                        <p>與我們的AI聊天，獲取個人化的美食推薦</p>
+                        <a href="{% url 'chat_room' %}" class="btn-light">開始聊天</a>
+                    </div>
+                </div>
+                
+                <div class="col">
+                    <div class="colored-box green h-100">
+                        <div class="icon-circle">
+                            <i class="fas fa-compass"></i>
+                        </div>
+                        <h3>探索美食</h3>
+                        <p>瀏覽用戶分享的美食推薦和心得</p>
+                        <a href="{% url 'explore' %}" class="btn-light">開始探索</a>
+                    </div>
+                </div>
+                
+                <div class="col">
+                    <div class="colored-box red h-100">
+                        <div class="icon-circle">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <h3>建立貼文</h3>
+                        <p>分享您的美食體驗和推薦給其他用戶</p>
+                        <a href="{% url 'create_post' %}" class="btn-light">建立貼文</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">今日精選美食推薦</h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="d-flex flex-column flex-sm-row">
+                                <div class="flex-shrink-0 mb-3 mb-sm-0">
+                                    <img src="/static/images/food1.jpg" alt="美食推薦" class="rounded" style="width: 120px; height: 120px; object-fit: cover;">
+                                </div>
+                                <div class="flex-grow-1 ms-0 ms-sm-3">
+                                    <h5>台式牛肉麵</h5>
+                                    <p class="text-muted">經典台灣美食，濃郁的牛肉湯底搭配Q彈麵條，是不容錯過的美食體驗。</p>
+                                    <span class="badge bg-primary">台式料理</span>
+                                    <span class="badge bg-secondary">麵食</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column flex-sm-row">
+                                <div class="flex-shrink-0 mb-3 mb-sm-0">
+                                    <img src="/static/images/food2.jpg" alt="美食推薦" class="rounded" style="width: 120px; height: 120px; object-fit: cover;">
+                                </div>
+                                <div class="flex-grow-1 ms-0 ms-sm-3">
+                                    <h5>義式提拉米蘇</h5>
+                                    <p class="text-muted">經典義式甜點，香濃的咖啡與馬斯卡彭起司層層交疊，口感豐富。</p>
+                                    <span class="badge bg-primary">義式料理</span>
+                                    <span class="badge bg-secondary">甜點</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">了解更多</h4>
+                    <p>美食推薦小幫手是一個基於人工智能的美食推薦平台，根據您的喜好和飲食習慣，為您提供最適合的美食建議。您也可以在這裡分享您的美食體驗，與其他美食愛好者交流。</p>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'chat_room' %}" class="btn btn-primary">開始探索美食世界</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

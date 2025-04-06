@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}我的收藏 - 美食推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-heart me-2"></i>我的收藏</h2>
+        <div>
+            <a href="{% url 'post_history' %}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-history me-1"></i>我的貼文
+            </a>
+            <a href="{% url 'create_post' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>建立貼文
+            </a>
+        </div>
+    </div>
+    
+    {% if favorites %}
+        <div class="row">
+            {% for favorite in favorites %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        {% if favorite.post.image %}
+                            <img src="{{ favorite.post.image.url }}" class="card-img-top" alt="{{ favorite.post.title }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">{{ favorite.post.title }}</h5>
+                                <button class="btn btn-sm btn-link favorite-btn active" data-post-id="{{ favorite.post.id }}">
+                                    <i class="fas fa-heart text-danger"></i>
+                                </button>
+                            </div>
+                            <p class="card-text">{{ favorite.post.content|truncatewords:30 }}</p>
+                            <div class="d-flex align-items-center mt-3">
+                                <img src="{{ favorite.post.user.profile.profile_pic.url }}" alt="{{ favorite.post.user.username }}" class="avatar me-2">
+                                <div>
+                                    <span class="d-block">{{ favorite.post.user.username }}</span>
+                                    <small class="text-muted">收藏於 {{ favorite.created_at|date:"Y-m-d" }}</small>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm ms-auto" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#viewFavoriteModal{{ favorite.id }}">
+                                    <i class="fas fa-eye me-1"></i>查看
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 查看貼文彈出窗 -->
+                <div class="modal fade" id="viewFavoriteModal{{ favorite.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">{{ favorite.post.title }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if favorite.post.image %}
+                                    <img src="{{ favorite.post.image.url }}" alt="{{ favorite.post.title }}" class="img-fluid rounded mb-3">
+                                {% endif %}
+                                <p>{{ favorite.post.content }}</p>
+                                <div class="d-flex align-items-center mt-3">
+                                    <img src="{{ favorite.post.user.profile.profile_pic.url }}" alt="{{ favorite.post.user.username }}" class="avatar me-2">
+                                    <div>
+                                        <p class="mb-0 fw-bold">{{ favorite.post.user.username }}</p>
+                                        <small class="text-muted">發布於 {{ favorite.post.created_at|date:"Y-m-d H:i" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <span class="me-auto">
+                                    <i class="fas fa-heart text-danger"></i> {{ favorite.post.favorited_by.count }} 人收藏
+                                </span>
+                                <button type="button" class="btn btn-outline-danger remove-favorite-btn" data-post-id="{{ favorite.post.id }}" data-bs-dismiss="modal">取消收藏</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-heart fa-4x text-muted mb-3"></i>
+                <h4>您尚未收藏任何貼文</h4>
+                <p class="text-muted">瀏覽美食貼文並收藏您喜歡的內容</p>
+                <a href="{% url 'explore' %}" class="btn btn-primary mt-2">
+                    <i class="fas fa-compass me-2"></i>探索美食
+                </a>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- 通知提示 -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+        <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">系統通知</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                操作已完成
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 收藏/取消收藏按鈕點擊事件
+        $('.favorite-btn, .remove-favorite-btn').click(function() {
+            const postId = $(this).data('post-id');
+            const btn = $(this);
+            
+            $.ajax({
+                url: `/user/post/${postId}/favorite/`,
+                type: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                success: function(response) {
+                    showToast(response.message);
+                    
+                    // 延遲後重新載入頁面顯示更新後的收藏列表
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1000);
+                }
+            });
+        });
+        
+        // 顯示通知提示
+        function showToast(message) {
+            $('#toastMessage').text(message);
+            var toast = new bootstrap.Toast(document.getElementById('liveToast'));
+            toast.show();
+        }
+        
+        // 獲取CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
+{% endblock %} 

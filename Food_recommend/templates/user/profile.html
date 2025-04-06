@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}個人資料 - 美食推薦小幫手{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <!-- 個人資料卡 -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <img src="{{ user.profile.profile_pic.url }}" alt="{{ user.username }} 的頭像" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    <h3>{{ user.username }}</h3>
+                    <p class="text-muted">{{ user.email }}</p>
+                    
+                    <!-- 添加追蹤數和粉絲數 -->
+                    <div class="d-flex justify-content-center mb-3">
+                        <a href="{% url 'followers' %}" class="text-decoration-none">
+                            <div class="text-center mx-3">
+                                <h5 class="mb-0">{{ user.followers.count }}</h5>
+                                <small class="text-muted">粉絲</small>
+                            </div>
+                        </a>
+                        <div class="mx-2 border-end"></div>
+                        <a href="{% url 'followers' %}" class="text-decoration-none">
+                            <div class="text-center mx-3">
+                                <h5 class="mb-0">{{ user.following.count }}</h5>
+                                <small class="text-muted">追蹤中</small>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <p>{{ user.profile.bio }}</p>
+                    
+                    <!-- 新增顯示喜愛的食物和禁忌食物 -->
+                    {% if user.profile.favorite_foods %}
+                    <div class="mb-2">
+                        <span class="badge bg-primary me-1"><i class="fas fa-utensils me-1"></i>喜愛的食物</span>
+                        <p class="mt-1">{{ user.profile.favorite_foods }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if user.profile.food_restrictions %}
+                    <div class="mb-2">
+                        <span class="badge bg-danger me-1"><i class="fas fa-ban me-1"></i>飲食禁忌</span>
+                        <p class="mt-1">{{ user.profile.food_restrictions }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#editProfileForm" aria-expanded="false" aria-controls="editProfileForm">
+                        <i class="fas fa-edit me-2"></i>編輯個人資料
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 編輯個人資料表單 -->
+        <div class="col-md-8 mb-4">
+            <div class="collapse" id="editProfileForm">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="mb-3">編輯個人資料</h3>
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="{{ u_form.username.id_for_label }}" class="form-label">用戶名</label>
+                                    {{ u_form.username }}
+                                    {% if u_form.username.errors %}
+                                        <div class="text-danger small">
+                                            {% for error in u_form.username.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ u_form.email.id_for_label }}" class="form-label">電子郵件</label>
+                                    {{ u_form.email }}
+                                    {% if u_form.email.errors %}
+                                        <div class="text-danger small">
+                                            {% for error in u_form.email.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ p_form.profile_pic.id_for_label }}" class="form-label">頭像</label>
+                                {{ p_form.profile_pic }}
+                                {% if p_form.profile_pic.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in p_form.profile_pic.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ p_form.bio.id_for_label }}" class="form-label">個人簡介</label>
+                                {{ p_form.bio }}
+                                {% if p_form.bio.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in p_form.bio.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 新增喜愛的食物欄位 -->
+                            <div class="mb-3">
+                                <label for="{{ p_form.favorite_foods.id_for_label }}" class="form-label">
+                                    <i class="fas fa-utensils me-1"></i>喜愛的食物
+                                </label>
+                                {{ p_form.favorite_foods }}
+                                <div class="form-text">{{ p_form.favorite_foods.help_text }}</div>
+                                {% if p_form.favorite_foods.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in p_form.favorite_foods.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 新增飲食禁忌欄位 -->
+                            <div class="mb-3">
+                                <label for="{{ p_form.food_restrictions.id_for_label }}" class="form-label">
+                                    <i class="fas fa-ban me-1"></i>飲食禁忌
+                                </label>
+                                {{ p_form.food_restrictions }}
+                                <div class="form-text">{{ p_form.food_restrictions.help_text }}</div>
+                                {% if p_form.food_restrictions.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in p_form.food_restrictions.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success">儲存變更</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用戶貼文 -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="mb-3">我的貼文</h3>
+                    
+                    {% if posts %}
+                        <div class="list-group">
+                            {% for post in posts %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ post.title }}</h5>
+                                        <small>{{ post.created_at|date:"Y-m-d H:i" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ post.content|truncatewords:30 }}</p>
+                                    {% if post.image %}
+                                        <img src="{{ post.image.url }}" alt="{{ post.title }}" class="img-thumbnail mt-2" style="max-height: 100px;">
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                            <p>您尚未建立任何貼文</p>
+                            <a href="{% url 'create_post' %}" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>建立貼文
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 為表單輸入添加Bootstrap樣式
+    document.addEventListener('DOMContentLoaded', function() {
+        // 用戶表單
+        document.getElementById('{{ u_form.username.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ u_form.email.id_for_label }}').classList.add('form-control');
+        
+        // 個人資料表單
+        document.getElementById('{{ p_form.profile_pic.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ p_form.bio.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ p_form.bio.id_for_label }}').setAttribute('rows', '3');
+        
+        // 新增欄位樣式
+        document.getElementById('{{ p_form.favorite_foods.id_for_label }}').classList.add('form-control');
+        document.getElementById('{{ p_form.food_restrictions.id_for_label }}').classList.add('form-control');
+    });
+</script>
+{% endblock %} 
