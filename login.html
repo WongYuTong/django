@@ -1,0 +1,27 @@
+<!-- login.html - 登入頁面（還原為原本的設計） -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header id="navbar-container"></header>
+    <!-- 登入區塊 -->
+    <section class="login-container">
+        <h2>用戶登入</h2>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="帳號" required>
+            <input type="password" id="password" placeholder="密碼" required>
+            <button type="submit" class="login-btn">登入</button>
+        </form>
+        <div class="login-options">
+            <button id="registerBtn">創建帳號</button>
+            <button id="emailLoginBtn">郵箱登入</button>
+        </div>
+    </section>
+    <script src="script.js"></script>
+</body>
+</html>
