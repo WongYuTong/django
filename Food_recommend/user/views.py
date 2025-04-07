@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, PostCreateForm
+from django.conf import settings
 
 def register(request):
     if request.method == 'POST':
@@ -157,5 +158,36 @@ def followers(request):
     following = Follow.objects.filter(follower=request.user).select_related('followed')
     return render(request, 'user/followers.html', {
         'followers': followers,
+        'following': following
+    })
+
+def nearby_restaurants(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    # 確保 API 密鑰已設置
+    api_key = settings.GOOGLE_PLACES_API_KEY
+    if not api_key:
+        messages.error(request, '未設置 Google Places API 密鑰。請聯繫管理員。')
+        return redirect('home')
+    
+    context = {
+        'google_api_key': api_key,
+    }
+    return render(request, 'user/nearby_restaurants.html', context)
+
+def following(request, user_id=None):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    if user_id:
+        user = get_object_or_404(User, id=user_id)
+    else:
+        user = request.user
+    
+    following = user.following.all()
+    
+    return render(request, 'user/following.html', {
+        'user': user,
         'following': following
     })

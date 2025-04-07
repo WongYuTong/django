@@ -14,4 +14,7 @@ urlpatterns = [
     path('user/<int:user_id>/follow/', views.toggle_follow, name='toggle_follow'),
     path('favorites/', views.favorites, name='favorites'),
     path('followers/', views.followers, name='followers'),
+    path('followers/<int:user_id>/', views.followers, name='followers'),
+    path('following/<int:user_id>/', views.following, name='following'),
+    path('nearby/', views.nearby_restaurants, name='nearby_restaurants'),
 ] 
