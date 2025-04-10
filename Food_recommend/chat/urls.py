@@ -8,4 +8,5 @@ urlpatterns = [
     path('room/assistant/', views.chat_assistant, name='chat_assistant'),
     path('explore/', views.explore, name='explore'),
     path('about/', views.about, name='about'),
+    path('nearby-restaurants/', views.nearby_restaurants, name='nearby_restaurants'),
 ] 

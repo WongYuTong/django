@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}附近餐廳 - 美食推薦小幫手{% endblock %}
+
+{% block extra_css %}
+<style>
+    .restaurant-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+        background-color: white;
+    }
+    
+    .restaurant-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .restaurant-img {
+        height: 200px;
+        object-fit: cover;
+        width: 100%;
+    }
+    
+    .restaurant-info {
+        padding: 20px;
+    }
+    
+    .restaurant-name {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .cuisine-badge {
+        background-color: #76b900;
+        color: white;
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+    
+    .restaurant-address, .restaurant-distance {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .restaurant-rating {
+        color: #ff9800;
+        font-weight: 600;
+    }
+    
+    .rating-star {
+        color: #ff9800;
+    }
+    
+    .view-more-btn {
+        background-color: #76b900;
+        border: none;
+        width: 100%;
+        padding: 10px;
+        color: white;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .view-more-btn:hover {
+        background-color: #65a300;
+    }
+    
+    .location-search {
+        margin-bottom: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">附近餐廳</h2>
+    
+    <div class="row location-search">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <form>
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="輸入您的位置" aria-label="位置">
+                            <span class="input-group-text">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </span>
+                            <select class="form-select" style="max-width: 150px;">
+                                <option value="1">1 公里內</option>
+                                <option value="2" selected>3 公里內</option>
+                                <option value="3">5 公里內</option>
+                                <option value="4">10 公里內</option>
+                            </select>
+                            <button class="btn btn-primary" type="submit">搜尋</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for restaurant in restaurants %}
+        <div class="col-md-4">
+            <div class="restaurant-card">
+                <img src="{{ restaurant.image }}" alt="{{ restaurant.name }}" class="restaurant-img">
+                <div class="restaurant-info">
+                    <h3 class="restaurant-name">{{ restaurant.name }}</h3>
+                    <span class="cuisine-badge">{{ restaurant.cuisine }}</span>
+                    <p class="restaurant-address">
+                        <i class="fas fa-map-marker-alt me-2"></i>{{ restaurant.address }}
+                    </p>
+                    <p class="restaurant-distance">
+                        <i class="fas fa-walking me-2"></i>距離約 {{ restaurant.distance }}
+                    </p>
+                    <p class="restaurant-rating">
+                        <i class="fas fa-star rating-star me-1"></i>
+                        <span>{{ restaurant.rating }}</span>
+                    </p>
+                    <button class="btn view-more-btn">查看更多</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 可以添加與地圖API相關的JavaScript代碼
+    document.addEventListener('DOMContentLoaded', function() {
+        // 獲取當前位置
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                console.log('緯度：' + position.coords.latitude);
+                console.log('經度：' + position.coords.longitude);
+                // 在此處可以添加使用位置信息的代碼
+            }, function(error) {
+                console.error('獲取位置時出錯：', error);
+            });
+        } else {
+            console.error('您的瀏覽器不支持地理定位功能');
+        }
+    });
+</script>
+{% endblock %} 

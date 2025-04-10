@@ -203,3 +203,60 @@ def chat_assistant(request):
 def about(request):
     """關於頁面視圖"""
     return render(request, 'chat/about.html')
+
+@login_required
+def nearby_restaurants(request):
+    """附近餐廳視圖函數"""
+    # 這裡可以添加獲取用戶位置和查詢附近餐廳的邏輯
+    # 這是一個簡單的示例，真實應用中可能需要整合地圖API或位置服務
+    
+    # 模擬一些附近餐廳數據，使用已有的圖片
+    restaurants = [
+        {
+            'id': 1,
+            'name': '鼎泰豐',
+            'cuisine': '台灣料理',
+            'address': '台北市信義區松高路1號',
+            'distance': '0.5 公里',
+            'rating': 4.8,
+            'image': '/static/images/food1.jpg'
+        },
+        {
+            'id': 2,
+            'name': '添好運點心專門店',
+            'cuisine': '粵菜',
+            'address': '台北市信義區松壽路2號',
+            'distance': '0.7 公里',
+            'rating': 4.6,
+            'image': '/static/images/food2.jpg'
+        },
+        {
+            'id': 3,
+            'name': '鼎王麻辣鍋',
+            'cuisine': '火鍋',
+            'address': '台北市信義區松仁路3號',
+            'distance': '1.2 公里',
+            'rating': 4.5,
+            'image': '/static/images/default_food.jpg'
+        },
+        {
+            'id': 4,
+            'name': '涓豆腐',
+            'cuisine': '韓國料理',
+            'address': '台北市信義區松智路4號',
+            'distance': '1.5 公里',
+            'rating': 4.2,
+            'image': '/static/images/food1.jpg'
+        },
+        {
+            'id': 5,
+            'name': '屯京拉麵',
+            'cuisine': '日本料理',
+            'address': '台北市信義區松勇路5號',
+            'distance': '1.8 公里',
+            'rating': 4.3,
+            'image': '/static/images/food2.jpg'
+        }
+    ]
+    
+    return render(request, 'chat/nearby_restaurants.html', {'restaurants': restaurants})
