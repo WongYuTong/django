@@ -26,18 +26,30 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, b
             logging.warning("未提供店家編號，無法追蹤評論數量")
             return
 
-        # 讀取現有評論數量
+        # 讀取現有評論數量和有評論敘述的數量
         review_count = 0
+        review_with_text_count = 0
         if os.path.exists("all_reviews.csv"):
             with open("all_reviews.csv", mode='r', encoding='utf-8-sig') as file:
                 reader = csv.reader(file)
                 next(reader)  # 跳過標題行
-                review_count = sum(1 for row in reader if row and row[0] == str(store_id))
+                for row in reader:
+                    if row and row[0] == str(store_id):
+                        review_count += 1
+                        # 檢查評論欄位（索引4）是否有實際內容
+                        if row[4] and row[4] != "無評論":
+                            review_with_text_count += 1
         
-        if review_count >= 3000:
-            logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限，跳過抓取")
+        if review_with_text_count >= 60:
+            logging.info(f"店家 {store_name}（編號：{store_id}）已達到60則有效評論上限，跳過抓取")
             # 更新完成狀態
-            update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
+            update_completion_status(store_id, "已完成", f"已達到60則有效評論上限")
+            return
+            
+        if review_count >= 160:
+            logging.info(f"店家 {store_name}（編號：{store_id}）已達到160則評論上限，跳過抓取")
+            # 更新完成狀態
+            update_completion_status(store_id, "已完成", f"已達到160則評論上限")
             return
 
         scrollable_div = WebDriverWait(driver, 60).until(
@@ -60,24 +72,27 @@ def scroll_reviews(driver, store_name, pause_time=3, max_no_change_attempts=5, b
             
             new_reviews = [review for review in reviews if review not in processed_reviews]
             if new_reviews:
-                # 計算剩餘可抓取的評論數量
-                remaining_reviews = 3000 - review_count
+                # 計算剩餘可抓取的有效評論數量
+                remaining_reviews = min(60 - review_with_text_count, 160 - review_count)
                 if remaining_reviews <= 0:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
+                    if review_with_text_count >= 60:
+                        update_completion_status(store_id, "已完成", f"已達到60則有效評論上限")
+                    else:
+                        update_completion_status(store_id, "已完成", f"已達到160則評論上限")
                     break
                 
                 # 確保不超過限制
-                reviews_to_process = min(len(new_reviews[:batch_size]), remaining_reviews)
-                fetch_reviews(driver, store_name, new_reviews[:reviews_to_process], store_id)
+                reviews_to_process = min(len(new_reviews[:batch_size]), max(50, remaining_reviews * 2))  # 預估可能有一半是無效評論
+                new_text_reviews = fetch_reviews(driver, store_name, new_reviews[:reviews_to_process], store_id)
                 processed_reviews.update(new_reviews[:reviews_to_process])
-                review_count += reviews_to_process
+                review_with_text_count += new_text_reviews
                 
-                if review_count >= 3000:
-                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到3000則評論上限")
+                if review_with_text_count >= 60:
+                    logging.info(f"店家 {store_name}（編號：{store_id}）已達到60則有效評論上限")
                     # 更新完成狀態
-                    update_completion_status(store_id, "已完成", f"已達到3000則評論上限")
+                    update_completion_status(store_id, "已完成", f"已達到60則有效評論上限")
                     break
             
             if new_height == last_height:
@@ -211,24 +226,14 @@ def open_reviews(driver):
 def fetch_reviews(driver, store_name, reviews, store_id=None):
     """抓取評論並保存到單獨的 CSV 文件和總評論檔案"""
     try:
-        # 創建評論資料夾（如果不存在）
-        # reviews_dir = "店家評論"
-        # if not os.path.exists(reviews_dir):
-        #     os.makedirs(reviews_dir)
-            
-        # 個別店家的評論檔案路徑
-        # csv_file_path = os.path.join(reviews_dir, f'{sanitize_filename(store_name)}_reviews.csv')
-        # 總評論檔案路徑
         all_reviews_file = "all_reviews.csv"
-        
-        # 獲取當前日期
         current_date = time.strftime("%Y-%m-%d")
+        new_text_reviews_count = 0  # 追蹤新增的有效評論數量
         
-        # 檢查總評論檔案是否存在，如果不存在則創建
         if not os.path.exists(all_reviews_file):
             with open(all_reviews_file, mode='w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow(["店家編號", "用戶", "評分", "日期", "評價", "評論抓取日期"])
+                writer.writerow(["店家編號", "用戶", "評分", "日期", "評論文字", "類別及評分", "評論抓取日期", "用戶評論記錄網址"])
         
         # 讀取已存在的評論
         existing_reviews = []
@@ -246,25 +251,49 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
 
         logging.info(f"共找到 {len(reviews)} 條評論：\n")
         
-        new_reviews_count = 0
         for review in reviews:
             try:
                 # 先檢查評論是否有全文按鈕
                 try:
-                    # 使用更精確的選擇器來找到全文按鈕
-                    full_text_button = None
-                    full_text_buttons = review.find_elements(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
-                    if full_text_buttons:
-                        full_text_button = full_text_buttons[0]
+                    # 先找到评论内容区域
+                    try:
+                        review_content = review.find_element(By.CLASS_NAME, 'MyEned')
+                    except NoSuchElementException:
+                        # 如果找不到 MyEned，嘗試找 jJc9Ad
+                        review_content = review.find_element(By.CLASS_NAME, 'jJc9Ad')
                         
+                    # 在评论内容区域中查找全文按钮
+                    full_text_button = review_content.find_element(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
+                    
                     # 如果找到按鈕，則點擊展開
                     if full_text_button and full_text_button.is_displayed():
                         logging.info("找到全文按鈕，點擊展開...")
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", full_text_button)
-                        time.sleep(0.5)  # 等待滾動完成
                         full_text_button.click()
-                except (NoSuchElementException, TimeoutException) as e:
-                    logging.info(f"展開全文過程中出現異常: {str(e).split('Stacktrace')[0]}")
+                        time.sleep(0.1)
+                        # 检查是否需要重试点击，最多重试5次
+                        retry_count = 0
+                        max_retries = 5
+                        while retry_count < max_retries:
+                            time.sleep(0.1)
+                            try:
+                                retry_button = review_content.find_element(By.CSS_SELECTOR, 'button.w8nwRe.kyuRq[aria-label="顯示更多"]')
+                                if retry_button.is_displayed():
+                                    logging.info(f"檢測到全文按鈕仍然存在，第 {retry_count + 1} 次嘗試點擊...")
+                                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", retry_button)
+                                    time.sleep(0.1)
+                                    retry_button.click()
+                                    time.sleep(0.1)
+                                    retry_count += 1
+                                else:
+                                    break  # 按钮不可见，说明已展开成功
+                            except NoSuchElementException:
+                                break  # 找不到按钮，说明已展开成功
+                        
+                        if retry_count >= max_retries:
+                            logging.info("已達到最大重試次數，停止嘗試點擊全文按鈕")
+                except NoSuchElementException:
+                    logging.info("未找到全文按鈕或評論內容區域")
                 except Exception as e:
                     logging.info(f"處理全文按鈕時出錯: {str(e).split('Stacktrace')[0]}")
 
@@ -273,6 +302,18 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                 rating_text = review.find_element(By.CLASS_NAME, 'kvMYJc').get_attribute("aria-label")
                 rating = ''.join(filter(str.isdigit, rating_text))
                 review_date = review.find_element(By.CLASS_NAME, 'rsqaWe').text
+                
+                # 獲取用戶評論記錄網址
+                user_profile_url = "無評論記錄網址"
+                try:
+                    user_profile_button = review.find_element(By.CSS_SELECTOR, 'button.al6Kxe')
+                    if user_profile_button:
+                        user_profile_url = user_profile_button.get_attribute('data-href')
+                        logging.info(f"找到用戶評論記錄網址：{user_profile_url}")
+                except NoSuchElementException:
+                    logging.info("未找到用戶評論記錄網址")
+                except Exception as e:
+                    logging.error(f"獲取用戶評論記錄網址時出錯：{e}")
                 
                 # 檢查評論是否已存在
                 is_duplicate = any(
@@ -285,35 +326,37 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                 if not is_duplicate:
                     try:
                         # 首先嘗試獲取常規文字評論
+                        review_text = "無評論"
+                        structured_review_text = "無類別及評分"
+                        
                         try:
-                            review_text_element = review.find_element(By.CLASS_NAME, 'MyEned')
-                            review_text = review_text_element.text.replace('\n', ' ').strip()
-                            logging.info(f"{user_name} 評論文字：{review_text}")
+                            review_text_element = review.find_element(By.CSS_SELECTOR, 'span.wiI7pd')
+                            if review_text_element:
+                                review_text = review_text_element.text.replace('\n', ' ').strip()
+                                logging.info(f"{user_name} 評論文字：{review_text}")
                         except NoSuchElementException:
-                            # 如果找不到常規評論，嘗試查找結構化評論 (jslog="127691")
-                            structured_review = review.find_elements(By.CSS_SELECTOR, 'div[jslog="127691"]')
+                            logging.info("未找到文字評論")
+                            review_text = "無評論"
+                            
+                        # 嘗試查找結構化評論
+                        try:
+                            structured_review = review.find_element(By.CSS_SELECTOR, 'div[jslog="127691"]')
                             if structured_review:
-                                review_text = structured_review[0].text.replace('\n', ' ').strip()
-                                logging.info(f"{user_name} 結構化評論：{review_text}")
-                            else:
-                                review_text = "無評論"
-                                logging.info("找不到文字評論和結構化評論，標記為無評論")
+                                structured_review_text = structured_review.text.replace('\n', ' ').strip()
+                                logging.info(f"{user_name} 類別及評分：{structured_review_text}")
+                        except NoSuchElementException:
+                            logging.info("未找到類別及評分")
+                            structured_review_text = "無類別及評分"
+                            
                     except Exception as e:
                         logging.error(f"處理評論文本時出錯：{e}")
                         review_text = "無評論"
+                        structured_review_text = "無類別及評分"
 
-                    # 暫時註釋掉個別店家評論檔案的寫入
-                    # # 寫入個別店家的評論檔案
-                    # with open(csv_file_path, mode='a', newline='', encoding='utf-8-sig') as file:
-                    #     writer = csv.writer(file)
-                    #     if len(existing_reviews) == 0:
-                    #         writer.writerow(['用戶', '評分', '日期', '評價'])
-                    #     writer.writerow([user_name, rating, review_date, review_text])
-                    
                     # 寫入總評論檔案
                     with open(all_reviews_file, mode='a', newline='', encoding='utf-8-sig') as file:
                         writer = csv.writer(file)
-                        writer.writerow([store_id, user_name, rating, review_date, review_text, current_date])
+                        writer.writerow([store_id, user_name, rating, review_date, review_text, structured_review_text, current_date, user_profile_url])
                     
                     # 將新評論添加到現有評論列表中（需要三個欄位都相同才判定為重複）
                     existing_reviews.append({
@@ -322,7 +365,10 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
                         'date': review_date
                     })
                     
-                    new_reviews_count += 1
+                    # 如果評論不是"無評論"，則計入有文字評論數
+                    if review_text != "無評論":
+                        new_text_reviews_count += 1
+                    
                     logging.info(f"抓取評論: 用戶: {user_name}, 評分: {rating}, 日期: {review_date}, 評論: {review_text}")
                     logging.info('-' * 30)
                 else:
@@ -330,7 +376,8 @@ def fetch_reviews(driver, store_name, reviews, store_id=None):
             except Exception as e:
                 logging.error(f"無法解析評論的部分內容：{e}")
 
-        logging.info(f"本次新增 {new_reviews_count} 條評論。")
+        logging.info(f"本次新增 {len(reviews)} 條評論，其中有含文字的評論 {new_text_reviews_count} 條。")
+        return new_text_reviews_count  # 返回新增的有效評論數量
     except Exception as e:
         logging.error(f"抓取評論時出錯：{e}")
 
@@ -341,7 +388,7 @@ def fetch_intro_info(driver, store_name, keyword):
         if not os.path.exists(csv_file):
             with open(csv_file, mode='w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow(["編號", "店名", "地址", "經緯度", "營業時間", "官方網站", "店家簡述", "簡介", "搜尋關鍵字", "星數", "價位", "營業狀態", "圖片檔案名稱", "是否已完成"])
+                writer.writerow(["編號", "店名", "地址", "經緯度", "營業時間", "官方網站", "店家簡述", "簡介", "關鍵字", "星數", "價位", "圖片檔案名稱", "是否已完成"])
 
         store_brief = "無簡述"
         intro_text = []
@@ -351,7 +398,7 @@ def fetch_intro_info(driver, store_name, keyword):
         website = "無官方網站"
         rating = "無星數"
         price_level = "無價位資訊"
-        business_status = ""
+        # business_status = ""  # 暫時停用營業狀態
         image_filename = ""
         is_completed = "未完成"  # 預設為未完成
 
@@ -363,9 +410,20 @@ def fetch_intro_info(driver, store_name, keyword):
             with open(csv_file, mode='r', encoding='utf-8-sig') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    if row["編號"] == next_id and row["是否已完成"] == "已完成":
-                        logging.info(f"店家 {store_name}（編號：{next_id}）已完成評論抓取，跳過。")
-                        return  # 如果已完成，直接返回，不再處理
+                    if row["編號"] == next_id:
+                        if row["是否已完成"] == "已完成":
+                            logging.info(f"店家 {store_name}（編號：{next_id}）已完成評論抓取，跳過。")
+                            return  # 如果已完成，直接返回，不再處理
+                        else:
+                            logging.info(f"店家 {store_name}（編號：{next_id}）未完成評論抓取，直接進行評論抓取。")
+                            try:
+                                open_reviews(driver)
+                                sort_reviews_by_latest(driver)
+                                scroll_reviews(driver, store_name, pause_time=3, batch_size=50, store_id=next_id)
+                                logging.info(f"完成抓取店家 {store_name} 的評論。")
+                            except Exception as e:
+                                logging.error(f"抓取評論時出錯：{e}")
+                            return  # 完成評論抓取後返回
 
         # 創建圖片資料夾
         img_dir = "img"
@@ -398,13 +456,13 @@ def fetch_intro_info(driver, store_name, keyword):
         except NoSuchElementException:
             logging.info("未找到店家圖片")
 
-        try:
-            status_element = driver.find_element(By.CSS_SELECTOR, 'span.fCEvvc span[jslog="75719; mutable:true;"]')
-            if status_element and status_element.text:
-                business_status = status_element.text
-                logging.info(f"找到營業狀態：{business_status}")
-        except NoSuchElementException:
-            logging.info("未找到營業狀態")
+        # try:
+        #     status_element = driver.find_element(By.CSS_SELECTOR, 'div.lMbq3e span.fCEvvc span[jslog="75719; mutable:true;"]')
+        #     if status_element and status_element.text:
+        #         business_status = status_element.text
+        #         logging.info(f"找到營業狀態：{business_status}")
+        # except NoSuchElementException:
+        #     logging.info("未找到營業狀態")
 
         try:
             rating_element = driver.find_element(By.CSS_SELECTOR, 'div.F7nice span[aria-hidden="true"]')
@@ -413,6 +471,20 @@ def fetch_intro_info(driver, store_name, keyword):
                 logging.info(f"找到店家星數：{rating}")
         except NoSuchElementException:
             logging.info("未找到店家星數")
+
+        # 抓取分類標籤
+        category_keywords = set()
+        try:
+            category_buttons = driver.find_elements(By.CSS_SELECTOR, 'button.DkEaL')
+            for button in category_buttons:
+                category_text = button.text.strip()
+                if category_text:
+                    category_keywords.add(category_text)
+                    logging.info(f"找到分類標籤：{category_text}")
+        except NoSuchElementException:
+            logging.info("未找到分類標籤")
+        except Exception as e:
+            logging.error(f"抓取分類標籤時出錯：{e}")
 
         try:
             price_element = driver.find_element(By.CSS_SELECTOR, 'span.mgr77e span[aria-label^="價格"]')
@@ -454,10 +526,19 @@ def fetch_intro_info(driver, store_name, keyword):
                         row['經緯度'] == coordinates and 
                         row['地址'] == address):
                         # 檢查關鍵字是否已存在
-                        existing_keywords = set(row['搜尋關鍵字'].split('、'))
+                        existing_keywords = set()
+                        if row['關鍵字']:
+                            existing_keywords = set(row['關鍵字'].split(','))
+                        
+                        # 添加搜尋關鍵字
                         if keyword not in existing_keywords:
                             existing_keywords.add(keyword)
-                            row['搜尋關鍵字'] = '、'.join(existing_keywords)
+                        
+                        # 添加分類標籤關鍵字
+                        existing_keywords.update(category_keywords)
+                        
+                        # 更新關鍵字欄位
+                        row['關鍵字'] = ','.join(sorted(existing_keywords))
                         
                         # 記錄該店家的編號和完成狀態
                         store_id_to_use = row['編號']
@@ -520,7 +601,7 @@ def fetch_intro_info(driver, store_name, keyword):
             logging.info(f"{store_name} 找不到簡介按鈕，跳過...")
             with open(csv_file, mode='a', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow([next_id, store_name, address, coordinates, business_hours, website, "無簡述", "無詳細簡介", keyword, rating, price_level, business_status, image_filename, is_completed])
+                writer.writerow([next_id, store_name, address, coordinates, business_hours, website, "無簡述", "無詳細簡介", keyword, rating, price_level, image_filename, is_completed])
             return
 
         try:
@@ -554,7 +635,14 @@ def fetch_intro_info(driver, store_name, keyword):
         
         with open(csv_file, mode='a', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file)
-            writer.writerow([next_id, store_name, address, coordinates, business_hours, website, store_brief, formatted_intro, keyword, rating, price_level, business_status, image_filename, is_completed])
+            # 合併關鍵字
+            all_keywords = set([keyword])  # 加入搜尋關鍵字
+            all_keywords.update(category_keywords)  # 加入分類標籤關鍵字
+            keywords_str = ','.join(sorted(all_keywords))
+            
+            writer.writerow([next_id, store_name, address, coordinates, business_hours, website, 
+                           store_brief, formatted_intro, keywords_str, rating, price_level, 
+                           image_filename, is_completed])
             logging.info(f"已保存 {store_name} 的所有信息，編號：{next_id}")
         time.sleep(1)
 
